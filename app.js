@@ -1,8 +1,29 @@
-const express = require('express')
+//Require
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+
+
+//Variables
 const app = express()
 const port = 3000
 
-const mongoose = require('mongoose');
+
+//Body parser
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
+
+
+
+// Importar rutas
+const appRoutes = require('./routes/app');
+const usuarioRoutes = require('./routes/usuario');
+const loginRoutes = require('./routes/login');
+
+
+
+//Conexion a la base de datos
 
 mongoose.connect('mongodb://127.0.0.1:27017/hospitalDB', {
   useNewUrlParser: true,
@@ -16,10 +37,14 @@ mongoose.connect('mongodb://127.0.0.1:27017/hospitalDB', {
   });
 
 
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
 
+//Rutas
+app.use('/usuario', usuarioRoutes);
+app.use('/login', loginRoutes);
+app.use('/', appRoutes);
+
+
+//Escuchando peticiones: puerto
 app.listen(port, () => {
   console.log(`Corriendo en el puerto: ${port}`)
 })
