@@ -1,47 +1,38 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 
 const mdAuntenticacion = require("../middleware/auntenticacion");
 
 const app = express();
 
-const Usuario = require("../models/usuario");
-const { connection } = require("mongoose");
+const Hospital = require("../models/hospital");
 // const SEED = require('../config/config').SEED
 
 //====================
-//Obtener todos los usuarios
+//Obtener todos los hospitales
 //====================
 app.get("/", (req, res, next) => {
   console.log("Solicitud recibida en la ruta raíz.");
 
-  let desde = req.query.desde || 0;
-  desde = Number(desde);
-
-  Usuario.find({}, "nombre email img role")
+  Hospital.find({})
+    .populate("usuario", "nombre email")
     .limit(5)
-    .skip(desde)
     .exec()
-
-    .then((usuarios) => {
-      console.log("Usuarios cargados correctamente:", usuarios);
-
-      Usuario.count({}).then((conteo) => {
+    .then((hospital) => {
+      Hospital.count({}).then((conteo) => {
         res.status(200).json({
           ok: true,
-          usuarios,
+          hospital,
           total: conteo,
         });
       });
     })
 
     .catch((err) => {
-      console.log("Error al cargar usuarios:", err);
+      console.log("Error al cargar hospital:", err);
 
       res.status(500).json({
         ok: false,
-        mensaje: "Error cargando usuarios",
+        mensaje: "Error cargando hospital",
         errors: err,
       });
     });
@@ -55,90 +46,83 @@ app.put("/:id", mdAuntenticacion.verificaToken, async (req, res) => {
   const body = req.body;
 
   try {
-    const usuario = await Usuario.findById(id);
+    const hospital = await Hospital.findById(id);
 
-    if (!usuario) {
+    if (!hospital) {
       return res.status(400).json({
         ok: false,
-        mensaje: `El usuario con el id: ${id} no existe`,
-        errors: { message: "No existe un usuario con ese id" },
+        mensaje: `El hospital con el id: ${id} no existe`,
+        errors: { message: "No existe un hospital con ese id" },
       });
     }
 
-    usuario.nombre = body.nombre;
-    usuario.email = body.email;
-    usuario.role = body.role;
+    hospital.nombre = body.nombre;
+    hospital.usuario = req.usuario._id;
 
-    const usuarioGuardado = await usuario.save();
-
-    usuarioGuardado.password = ":)";
+    const hospitalGuardado = await hospital.save();
 
     res.status(200).json({
       ok: true,
-      usuario: usuarioGuardado,
-      mensaje: "Usuario actualizado exitosamente",
+      usuario: hospitalGuardado,
+      mensaje: "Hospital actualizado exitosamente",
     });
   } catch (err) {
     res.status(400).json({
       ok: false,
-      mensaje: "Error al actualizar usuario",
+      mensaje: "Error al actualizar Hospital",
       errors: err,
     });
   }
 });
 
 //=========================
-//Crear un nuevo usurio
+//Crear un nuevo hospital
 //=========================
 app.post("/", mdAuntenticacion.verificaToken, async (req, res) => {
   const body = req.body;
 
-  const usuario = new Usuario({
+  const hospital = new Hospital({
     nombre: body.nombre,
-    email: body.email,
-    password: bcrypt.hashSync(body.password, 10),
-    img: body.img,
-    role: body.role,
+    usuario: req.usuario._id,
   });
 
   try {
-    const usuarioGuardado = await usuario.save();
+    const hospitalGuardado = await hospital.save();
     res.status(201).json({
       ok: true,
-      usuario: usuarioGuardado,
-      usuarioToken: req.usuario,
+      hospital: hospitalGuardado,
     });
   } catch (err) {
     return res.status(400).json({
       ok: false,
-      mensaje: "Error al crear usuario",
+      mensaje: "Error al crear hospital",
       errors: err,
     });
   }
 });
 
 //=========================
-//Borrar un usuario por el id
+//Borrar un hospital por el id
 //=========================
 
 app.delete("/:id", mdAuntenticacion.verificaToken, async (req, res) => {
   const id = req.params.id;
 
   try {
-    const usuarioBorrado = await Usuario.findByIdAndRemove(id);
+    const hospitalBorrado = await Hospital.findByIdAndRemove(id);
 
-    if (!usuarioBorrado) {
+    if (!hospitalBorrado) {
       return res.status(404).json({
         ok: false,
-        mensaje: `No se encontró un usuario con el id: ${id}`,
-        errors: { message: "No existe un usuario con ese id" },
+        mensaje: `No se encontró un hospital con el id: ${id}`,
+        errors: { message: "No existe un hospital con ese id" },
       });
     }
 
     res.status(200).json({
       ok: true,
-      usuario: usuarioBorrado,
-      mensaje: "Usuario eliminado exitosamente",
+      hospital: hospitalBorrado,
+      mensaje: "hospital eliminado exitosamente",
     });
 
     //Manejo de errores
